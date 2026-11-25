@@ -31,6 +31,33 @@ EXPECTED_BYTES = 89
 EXPECTED_CHARS = 88
 
 
+def verify(path, data):
+    """Read the written file back and verify it byte-for-byte.
+
+    Returns True only when the on-disk bytes match ``data`` exactly,
+    the byte count matches EXPECTED_BYTES, and the SHA-256 matches
+    EXPECTED_SHA256. Raises SystemExit with a clear message otherwise.
+    """
+    with open(path, "rb") as handle:
+        written = handle.read()
+    if len(written) != EXPECTED_BYTES:
+        raise SystemExit(
+            f"verification failed: {path} is {len(written)} bytes, "
+            f"expected {EXPECTED_BYTES}"
+        )
+    if hashlib.sha256(written).hexdigest() != EXPECTED_SHA256:
+        raise SystemExit(
+            f"verification failed: {path} sha256 does not match "
+            f"the pinned confession"
+        )
+    if written != data:
+        raise SystemExit(
+            f"verification failed: {path} bytes differ from the "
+            f"expected confession"
+        )
+    return True
+
+
 def main() -> int:
     text = CONFESSION + "\n"
     data = text.encode("utf-8")
@@ -57,8 +84,12 @@ def main() -> int:
         return 1
 
     os.makedirs("/output", exist_ok=True)
-    with open("/output/entry.txt", "wb") as handle:
+    path = "/output/entry.txt"
+    with open(path, "wb") as handle:
         handle.write(data)
+
+    if not verify(path, data):
+        raise SystemExit("verification failed: written file does not match")
 
     print(
         f"wrote /output/entry.txt: {len(data)} bytes, "
